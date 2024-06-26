@@ -3,7 +3,7 @@ from urllib import parse
 
 import requests
 
-from bleemeo_python.exceptions import AuthenticationError, APIError
+from .exceptions import AuthenticationError, APIError
 
 
 class Authenticator:
