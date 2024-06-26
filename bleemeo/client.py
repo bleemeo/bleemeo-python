@@ -14,8 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
-from typing import Optional, Iterator, Any
+import time
+from collections.abc import Iterator, Sequence
+from datetime import datetime, timedelta
+from typing import Any
 from urllib import parse
 
 from requests import Response, Request, Session
@@ -29,18 +33,21 @@ from .resources import Resource
 class Client:
     DEFAULT_ENDPOINT = "https://api.bleemeo.com"
     DEFAULT_OAUTH_CLIENT_ID = "1fc6de3e-8750-472e-baea-3ba22bb4eb56"
+    DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY = 60  # seconds
     DEFAULT_USER_AGENT = "Bleemeo Python Client"
 
     def __init__(
         self,
-        api_url: Optional[str] = None,
-        account_id: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        oauth_client_id: Optional[str] = None,
-        oauth_client_secret: Optional[str] = None,
-        oauth_initial_refresh_token: Optional[str] = None,
-        custom_headers: Optional[dict[str, Any]] = None,
+        *,
+        api_url: str | None = None,
+        account_id: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        oauth_client_id: str | None = None,
+        oauth_client_secret: str | None = None,
+        oauth_initial_refresh_token: str | None = None,
+        custom_headers: dict[str, Any] | None = None,
+        throttle_max_auto_retry_delay: int | None = None,
         load_from_env: bool = False,
     ):
         if load_from_env:
@@ -69,6 +76,9 @@ class Client:
         self.oauth_client_id = oauth_client_id or self.DEFAULT_OAUTH_CLIENT_ID
         self.oauth_client_secret = oauth_client_secret
         self.oauth_initial_refresh_token = oauth_initial_refresh_token
+        self.throttle_max_auto_retry_delay = (
+            throttle_max_auto_retry_delay or self.DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY
+        )
         self.session = Session()
         self.session.mount("https://", HTTPAdapter(max_retries=5))
         self.session.headers = {
@@ -80,6 +90,7 @@ class Client:
         if custom_headers:
             self.session.headers.update(custom_headers)
 
+        self._throttle_deadline = datetime.min
         self._authenticator = Authenticator(
             self.api_url,
             self.session,
@@ -136,6 +147,10 @@ class Client:
         params: Optional[dict[str, Any]] = None,
         data: Optional[Any] = None,
     ) -> Response:
+        time_to_wait = self._throttle_deadline - datetime.now()
+        if time_to_wait > timedelta(seconds=0):
+            raise ThrottleError.prevent(math.ceil(time_to_wait.total_seconds()))
+
         req = Request(
             method=method,
             url=self._build_url(url),
@@ -143,16 +158,14 @@ class Client:
             params=params,
         )
 
-        response = self._do_request(req, authenticated)
-        if response.status_code >= 400:
-            if response.status_code == 400:  # Bad Request
-                raise APIError(f"Bad request on {url}", response)
-            if response.status_code == 401:  # Unauthorized
-                raise AuthenticationError(f"Authentication failed on {url}", response)
-            if response.status_code == 404:  # Not Found
-                raise APIError(f"Resource {url} not found", response)
-            if response.status_code == 429:  # Too Many Requests
-                raise ThrottleError(response)
+        try:
+            response = self._do_request_handling(authenticated, method, req)
+        except ThrottleError as throttle_error:
+            if (
+                self.throttle_max_auto_retry_delay is None
+                or throttle_error.delay_seconds > self.throttle_max_auto_retry_delay
+            ):
+                raise throttle_error
 
             raise APIError(
                 f"Request {method} on {url} failed with status {response.status_code}",

@@ -34,9 +34,23 @@ class AuthenticationError(APIError):
 
 
 class ThrottleError(APIError):
-    def __init__(self, response: requests.Response) -> None:
-        delay_seconds = response.headers.get("Retry-After") or 30
+    def __init__(
+        self,
+        response: requests.Response | None = None,
+        delay_seconds: int | None = None,
+    ) -> None:
+        ds = 30
+        if delay_seconds is not None:
+            ds = delay_seconds
+        elif response is not None and "Retry-After":
+            ds = int(response.headers.get("Retry-After") or 30)
+
         super(APIError, self).__init__(
-            f"Throttle error: request must be retried after {delay_seconds}s.", response
+            f"Throttle error: request must be retried after {ds}s.", response
         )
-        self.throttle_deadline = datetime.now() + timedelta(seconds=int(delay_seconds))
+        self.delay_seconds = ds
+        self.throttle_deadline = datetime.now() + timedelta(seconds=ds)
+
+    @classmethod
+    def prevent(cls, delay_seconds: int) -> ThrottleError:
+        return cls(response=None, delay_seconds=delay_seconds)
