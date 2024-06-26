@@ -90,8 +90,15 @@ class Client:
             self.oauth_initial_refresh_token,
         )
 
+    def __enter__(self) -> "Client":
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self.logout()
+
     def logout(self) -> None:
         self._authenticator.logout()
+        self.session.close()
 
     def _build_url(self, *parts: str) -> str:
         url = self.api_url
@@ -183,7 +190,7 @@ class Client:
         self, resource: Resource, params: Optional[dict[str, Any]] = None
     ) -> Iterator[dict[str, Any]]:
         params = params.copy() if params else {}
-        params.update({"page": 1, "page_size": 2500})
+        params.update({"page_size": 2500})
 
         next_url: Optional[str] = self._build_url(resource.value)
         while next_url is not None:
