@@ -87,7 +87,7 @@ class Client:
                    data: Optional[Any] = None) -> Response:
         req = Request(
             method=method,
-            url=url,
+            url=self._build_url(url),
             json=data,
             params=params,
         )
@@ -108,13 +108,13 @@ class Client:
         return response
 
     def get(self, resource: Resource, id: str, *fields: str) -> Response:
-        url = self._build_url(resource.value, id)
+        url = resource.value + "/" + id
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do_request("GET", url, params=params)
 
     def get_page(self, resource: Resource, *, page: int, page_size: int, params: Optional[dict] = None) -> Response:
-        url = self._build_url(resource.value)
+        url = resource.value
         params = params.copy() if params else {}
         params.update({"page": page, "page_size": page_size})
 
@@ -139,18 +139,18 @@ class Client:
             params = None  # Avoid duplicating the params, which are already given back in the next URL.
 
     def create(self, resource: Resource, data: Any, *fields: str) -> Response:
-        url = self._build_url(resource.value)
+        url = resource.value
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do_request("POST", url, data=data, params=params)
 
     def update(self, resource: Resource, id: str, data: Any, *fields: str) -> Response:
-        url = self._build_url(resource.value, id)
+        url = resource.value + "/" + id
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do_request("PATCH", url, data=data, params=params)
 
     def delete(self, resource: Resource, id: str) -> Response:
-        url = self._build_url(resource.value, id)
+        url = resource.value + "/" + id
 
         return self.do_request("DELETE", url)
