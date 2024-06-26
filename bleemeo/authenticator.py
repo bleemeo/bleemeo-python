@@ -7,16 +7,16 @@ from .exceptions import AuthenticationError, APIError
 
 
 class Authenticator:
-
-    def __init__(self,
-                 api_url: str,
-                 session: requests.Session,
-                 oauth_id: str,
-                 oauth_secret: Optional[str] = None,
-                 username: Optional[str] = None,
-                 password: Optional[str] = None,
-                 oauth_initial_refresh_token: Optional[str] = None,
-                 ):
+    def __init__(
+        self,
+        api_url: str,
+        session: requests.Session,
+        oauth_id: str,
+        oauth_secret: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        oauth_initial_refresh_token: Optional[str] = None,
+    ):
         self.api_url = api_url
         self._insecure = not api_url.startswith("https://")
         self.session = session
@@ -29,13 +29,13 @@ class Authenticator:
         self.__current_token: Optional[str] = None
         self.__current_refresh: Optional[str] = None
 
-    def get_token(self, force_refetch=False) -> str:
+    def get_token(self, force_refetch: bool = False) -> str:
         if not self.__current_token or force_refetch:
             self.__authenticate()
 
-        return self.__current_token
+        return str(self.__current_token)
 
-    def __authenticate(self):
+    def __authenticate(self) -> None:
         url = parse.urljoin(self.api_url, "/o/token/")
 
         if self.__current_refresh or self.oauth_initial_refresh_token:
@@ -86,13 +86,15 @@ class Authenticator:
             verify=not self._insecure,
         )
         if response.status_code != 200:
-            raise AuthenticationError(f"Failed to retrieve OAuth, status={response.status_code}", response)
+            raise AuthenticationError(
+                f"Failed to retrieve OAuth, status={response.status_code}", response
+            )
 
         response_data = response.json()
         self.__current_token = response_data["access_token"]
         self.__current_refresh = response_data["refresh_token"]
 
-    def logout(self):
+    def logout(self) -> None:
         if not self.__current_refresh:
             return
 
@@ -117,7 +119,9 @@ class Authenticator:
             verify=not self._insecure,
         )
         if response.status_code != 200:
-            raise APIError(f"Failed to revoke token, status={response.status_code}", response)
+            raise APIError(
+                f"Failed to revoke token, status={response.status_code}", response
+            )
 
         self.__current_token = None
         self.__current_refresh = None

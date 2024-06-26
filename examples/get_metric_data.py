@@ -6,8 +6,12 @@ def get_metric_data():
 
     try:
         page, page_size = 1, 1
-        resp_page = client.get_page(Resource.METRIC, page=page, page_size=page_size,
-                                    params={"active": True, "fields": "id,label"})
+        resp_page = client.get_page(
+            Resource.METRIC,
+            page=page,
+            page_size=page_size,
+            params={"active": True, "fields": "id,label"},
+        )
 
         page = resp_page.json()
         if len(page["results"]) == 0:
@@ -25,5 +29,5 @@ def get_metric_data():
         client.logout()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     get_metric_data()

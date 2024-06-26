@@ -16,29 +16,36 @@ class Client:
     DEFAULT_USER_AGENT = "Bleemeo Python Client"
 
     def __init__(
-            self,
-            api_url: Optional[str] = None,
-            account_id: Optional[str] = None,
-            username: Optional[str] = None,
-            password: Optional[str] = None,
-            oauth_client_id: Optional[str] = None,
-            oauth_client_secret: Optional[str] = None,
-            oauth_initial_refresh_token: Optional[str] = None,
-            custom_headers: Optional[dict] = None,
-            load_from_env: bool = False,
+        self,
+        api_url: Optional[str] = None,
+        account_id: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        oauth_client_id: Optional[str] = None,
+        oauth_client_secret: Optional[str] = None,
+        oauth_initial_refresh_token: Optional[str] = None,
+        custom_headers: Optional[dict[str, Any]] = None,
+        load_from_env: bool = False,
     ):
         if load_from_env:
             api_url = api_url or os.environ.get("BLEEMEO_API_URL")
             account_id = account_id or os.environ.get("BLEEMEO_ACCOUNT_ID")
             username = username or os.environ.get("BLEEMEO_USER")
             password = password or os.environ.get("BLEEMEO_PASSWORD")
-            oauth_client_id = oauth_client_id or os.environ.get("BLEEMEO_OAUTH_CLIENT_ID")
-            oauth_client_secret = oauth_client_secret or os.environ.get("BLEEMEO_OAUTH_CLIENT_SECRET")
+            oauth_client_id = oauth_client_id or os.environ.get(
+                "BLEEMEO_OAUTH_CLIENT_ID"
+            )
+            oauth_client_secret = oauth_client_secret or os.environ.get(
+                "BLEEMEO_OAUTH_CLIENT_SECRET"
+            )
             oauth_initial_refresh_token = oauth_initial_refresh_token or os.environ.get(
-                "BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN")
+                "BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN"
+            )
 
         if not username and not oauth_initial_refresh_token:
-            raise ConfigurationError("Either a username or an initial oAuth refresh token must be provided.")
+            raise ConfigurationError(
+                "Either a username or an initial oAuth refresh token must be provided."
+            )
 
         self.api_url = api_url or self.DEFAULT_ENDPOINT
         self.username = username
@@ -57,10 +64,17 @@ class Client:
         if custom_headers:
             self.session.headers.update(custom_headers)
 
-        self._authenticator = Authenticator(self.api_url, self.session, self.oauth_client_id, self.oauth_client_secret,
-                                            self.username, self.password, self.oauth_initial_refresh_token)
+        self._authenticator = Authenticator(
+            self.api_url,
+            self.session,
+            self.oauth_client_id,
+            self.oauth_client_secret,
+            self.username,
+            self.password,
+            self.oauth_initial_refresh_token,
+        )
 
-    def logout(self):
+    def logout(self) -> None:
         self._authenticator.logout()
 
     def _build_url(self, *parts: str) -> str:
@@ -71,11 +85,19 @@ class Client:
             url = url + "/"
         return url
 
-    def _do_request(self, request: Request, authenticated: bool, is_retry=False) -> Response:
-        request.headers = {} if request.json is None else {"Content-Type": "application/json"}
+    def _do_request(
+        self, request: Request, authenticated: bool, is_retry: bool = False
+    ) -> Response:
+        request.headers = (
+            {} if request.json is None else {"Content-Type": "application/json"}
+        )
 
         if authenticated:
-            request.headers.update({"Authorization": f"Bearer {self._authenticator.get_token(force_refetch=is_retry)}"})
+            request.headers.update(
+                {
+                    "Authorization": f"Bearer {self._authenticator.get_token(force_refetch=is_retry)}"
+                }
+            )
 
         resp = self.session.send(self.session.prepare_request(request))
         if resp.status_code == 401 and authenticated and not is_retry:
@@ -83,8 +105,14 @@ class Client:
 
         return resp
 
-    def do_request(self, method: str, url: str, authenticated=True, params: Optional[dict] = None,
-                   data: Optional[Any] = None) -> Response:
+    def do_request(
+        self,
+        method: str,
+        url: str,
+        authenticated: bool = True,
+        params: Optional[dict[str, Any]] = None,
+        data: Optional[Any] = None,
+    ) -> Response:
         req = Request(
             method=method,
             url=self._build_url(url),
@@ -103,7 +131,10 @@ class Client:
             if response.status_code == 429:  # Too Many Requests
                 raise ThrottleError(response)
 
-            raise APIError(f"Request {method} on {url} failed with status {response.status_code}", response)
+            raise APIError(
+                f"Request {method} on {url} failed with status {response.status_code}",
+                response,
+            )
 
         return response
 
@@ -113,19 +144,28 @@ class Client:
 
         return self.do_request("GET", url, params=params)
 
-    def get_page(self, resource: Resource, *, page: int, page_size: int, params: Optional[dict] = None) -> Response:
+    def get_page(
+        self,
+        resource: Resource,
+        *,
+        page: int,
+        page_size: int,
+        params: Optional[dict[str, Any]] = None,
+    ) -> Response:
         url = resource.value
         params = params.copy() if params else {}
         params.update({"page": page, "page_size": page_size})
 
         return self.do_request("GET", url, params=params)
 
-    def count(self, resource: Resource, params: Optional[dict] = None) -> int:
+    def count(self, resource: Resource, params: Optional[dict[str, Any]] = None) -> int:
         resp = self.get_page(resource, page=1, page_size=0, params=params)
 
-        return resp.json()["count"]
+        return int(resp.json()["count"])
 
-    def iterate(self, resource: Resource, params: Optional[dict] = None) -> Iterator[dict]:
+    def iterate(
+        self, resource: Resource, params: Optional[dict[str, Any]] = None
+    ) -> Iterator[dict[str, Any]]:
         params = params.copy() if params else {}
         params.update({"page": 1, "page_size": 2500})
 
