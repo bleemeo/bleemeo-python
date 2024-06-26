@@ -1,7 +1,4 @@
-from enum import Enum
-
-
-class AgentType(Enum):
+class AgentType:
     AWS_ACCOUNT = "aws_account"
     AWS_TRUSTED_ADVISOR = "aws_trusted_advisor"
     AWS_DYNAMODB = "aws_dynamodb"
@@ -18,19 +15,19 @@ class AgentType(Enum):
     VSPHERE_VM = "vsphere_vm"
 
 
-class DisconnectionReason(Enum):
+class DisconnectionReason:
     CLEAN_SHUTDOWN = 1
     AGENT_TIMEOUT = 2
     AGENT_AUTO_UPGRADE = 3
     AGENT_UPGRADE = 4
 
 
-class GloutonDiagnostics(Enum):
+class GloutonDiagnostics:
     CRASH = 0
     ON_DEMAND = 1
 
 
-class Graph(Enum):
+class Graph:
     LINE = 0
     STACK = 1
     PIE = 2
@@ -45,18 +42,18 @@ class Graph(Enum):
     BAR = 11
 
 
-class ReportPeriod(Enum):
+class ReportPeriod:
     WEEKLY = 0
     MONTHLY = 1
 
 
-class ReportIncluded(Enum):
+class ReportIncluded:
     NONE = 0
     PARTIAL = 1
     FULL = 2
 
 
-class ConfigItemSource(Enum):
+class ConfigItemSource:
     UNKNOWN = 0
     DEFAULT = 1
     FILE = 2
@@ -64,7 +61,7 @@ class ConfigItemSource(Enum):
     API = 4
 
 
-class ConfigItemType(Enum):
+class ConfigItemType:
     ANY = 0
     INT = 1
     FLOAT = 2
@@ -83,14 +80,14 @@ class ConfigItemType(Enum):
     TYPE_LOG_INPUTS = 36
 
 
-class Status(Enum):
+class Status:
     OK = 0
     WARNING = 1
     CRITICAL = 2
     UNKNOWN = 3
 
 
-class TagType(Enum):
+class TagType:
     AUTOMATIC_API = 0
     CREATED_BY_GLOUTON = 1
     CREATED_BY_FRONTEND = 2
