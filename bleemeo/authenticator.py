@@ -93,15 +93,18 @@ class Authenticator:
         self.__current_refresh = response_data["refresh_token"]
 
     def logout(self):
-        if not self.__current_token:
+        if not self.__current_refresh:
             return
 
         url = parse.urljoin(self.api_url, "/o/revoke_token/")
         data = {
-            "token": self.__current_token,
+            "token": self.__current_refresh,
             "client_id": self.oauth_client_id,
-            "client_secret": self.oauth_client_secret,
+            "token_type_hint": "refresh_token",
         }
+
+        if self.oauth_client_secret:
+            data["client_secret"] = self.oauth_client_secret
 
         response = self.session.post(
             url,
