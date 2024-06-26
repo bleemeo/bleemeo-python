@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Iterator, Any
 from urllib import parse
 
@@ -16,22 +17,33 @@ class Client:
 
     def __init__(
             self,
-            api_url: str = DEFAULT_ENDPOINT,
+            api_url: Optional[str] = None,
             account_id: Optional[str] = None,
             username: Optional[str] = None,
             password: Optional[str] = None,
-            oauth_client_id: str = DEFAULT_OAUTH_CLIENT_ID,
+            oauth_client_id: Optional[str] = None,
             oauth_client_secret: Optional[str] = None,
             oauth_initial_refresh_token: Optional[str] = None,
             custom_headers: Optional[dict] = None,
+            load_from_env: bool = False,
     ):
+        if load_from_env:
+            api_url = api_url or os.environ.get("BLEEMEO_API_URL")
+            account_id = account_id or os.environ.get("BLEEMEO_ACCOUNT_ID")
+            username = username or os.environ.get("BLEEMEO_USER")
+            password = password or os.environ.get("BLEEMEO_PASSWORD")
+            oauth_client_id = oauth_client_id or os.environ.get("BLEEMEO_OAUTH_CLIENT_ID")
+            oauth_client_secret = oauth_client_secret or os.environ.get("BLEEMEO_OAUTH_CLIENT_SECRET")
+            oauth_initial_refresh_token = oauth_initial_refresh_token or os.environ.get(
+                "BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN")
+
         if not username and not oauth_initial_refresh_token:
             raise ConfigurationError("Either a username or an initial oAuth refresh token must be provided.")
 
-        self.api_url = api_url
+        self.api_url = api_url or self.DEFAULT_ENDPOINT
         self.username = username
         self.password = password
-        self.oauth_client_id = oauth_client_id
+        self.oauth_client_id = oauth_client_id or self.DEFAULT_OAUTH_CLIENT_ID
         self.oauth_client_secret = oauth_client_secret
         self.oauth_initial_refresh_token = oauth_initial_refresh_token
         self.session = Session()
@@ -45,8 +57,8 @@ class Client:
         if custom_headers:
             self.session.headers.update(custom_headers)
 
-        self._authenticator = Authenticator(api_url, self.session, oauth_client_id, oauth_client_secret, username,
-                                            password, oauth_initial_refresh_token)
+        self._authenticator = Authenticator(self.api_url, self.session, self.oauth_client_id, self.oauth_client_secret,
+                                            self.username, self.password, self.oauth_initial_refresh_token)
 
     def logout(self):
         self._authenticator.logout()
