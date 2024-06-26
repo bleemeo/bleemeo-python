@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 import os
@@ -22,11 +23,10 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib import parse
 
-from requests import Response, Request, Session
-from requests.adapters import HTTPAdapter
+from requests import Request, Response, Session
 
-from .authenticator import Authenticator
-from .exceptions import ConfigurationError, APIError, AuthenticationError, ThrottleError
+from ._authenticator import Authenticator
+from .exceptions import APIError, AuthenticationError, ConfigurationError, ThrottleError
 from .resources import Resource
 
 
@@ -80,7 +80,6 @@ class Client:
             throttle_max_auto_retry_delay or self.DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY
         )
         self.session = Session()
-        self.session.mount("https://", HTTPAdapter(max_retries=5))
         self.session.headers = {
             "User-Agent": self.DEFAULT_USER_AGENT,
         }
@@ -101,7 +100,7 @@ class Client:
             self.oauth_initial_refresh_token,
         )
 
-    def __enter__(self) -> "Client":
+    def __enter__(self) -> Client:
         return self
 
     def __exit__(self, *exc_info: Any) -> None:
@@ -133,19 +132,48 @@ class Client:
                 }
             )
 
-        resp = self.session.send(self.session.prepare_request(request))
+        prep = self.session.prepare_request(request)
+        # Merge environment settings into session
+        settings = self.session.merge_environment_settings(
+            prep.url, {}, None, None, None
+        )
+        resp = self.session.send(prep, **settings)
         if resp.status_code == 401 and authenticated and not is_retry:
             resp = self._do_request(request, authenticated=True, is_retry=True)
 
         return resp
 
-    def do_request(
+    def _do_request_handling(
+        self, authenticated: bool, method: str, req: Request
+    ) -> Response:
+        response = self._do_request(req, authenticated)
+        if response.status_code >= 400:
+            if response.status_code == 400:  # Bad Request
+                raise APIError(f"Bad request on {req.url}", response)
+            if response.status_code == 401:  # Unauthorized
+                raise AuthenticationError(
+                    f"Authentication failed on {req.url}", response
+                )
+            if response.status_code == 404:  # Not Found
+                raise APIError(f"Resource {req.url} not found", response)
+            if response.status_code == 429:  # Too Many Requests
+                throttle_error = ThrottleError(response)
+                self._throttle_deadline = throttle_error.throttle_deadline
+                raise throttle_error
+
+            raise APIError(
+                f"Request {method} on {req.url} failed with status {response.status_code}",
+                response,
+            )
+        return response
+
+    def do(
         self,
         method: str,
         url: str,
         authenticated: bool = True,
-        params: Optional[dict[str, Any]] = None,
-        data: Optional[Any] = None,
+        params: dict[str, Any] | None = None,
+        data: Any | None = None,
     ) -> Response:
         time_to_wait = self._throttle_deadline - datetime.now()
         if time_to_wait > timedelta(seconds=0):
@@ -167,47 +195,48 @@ class Client:
             ):
                 raise throttle_error
 
-            raise APIError(
-                f"Request {method} on {url} failed with status {response.status_code}",
-                response,
-            )
+            time.sleep(self.throttle_max_auto_retry_delay)
+
+            response = self._do_request_handling(authenticated, method, req)
 
         return response
 
-    def get(self, resource: Resource, id: str, *fields: str) -> Response:
-        url = resource.value + "/" + id
+    def get(
+        self, resource: Resource, id: str, fields: Sequence[str] | None = None
+    ) -> Response:
+        url = parse.urljoin(resource.value, id)
         params = {"fields": ",".join(fields)} if fields else None
 
-        return self.do_request("GET", url, params=params)
+        return self.do("GET", url, params=params)
 
     def get_page(
         self,
         resource: Resource,
         *,
-        page: int,
-        page_size: int,
-        params: Optional[dict[str, Any]] = None,
+        page: int = 1,
+        page_size: int = 25,
+        params: dict[str, Any] | None = None,
     ) -> Response:
         url = resource.value
         params = params.copy() if params else {}
         params.update({"page": page, "page_size": page_size})
 
-        return self.do_request("GET", url, params=params)
+        return self.do("GET", url, params=params)
 
-    def count(self, resource: Resource, params: Optional[dict[str, Any]] = None) -> int:
+    def count(self, resource: Resource, params: dict[str, Any] | None = None) -> int:
         resp = self.get_page(resource, page=1, page_size=0, params=params)
 
         return int(resp.json()["count"])
 
     def iterate(
-        self, resource: Resource, params: Optional[dict[str, Any]] = None
+        self, resource: Resource, params: dict[str, Any] | None = None
     ) -> Iterator[dict[str, Any]]:
         params = params.copy() if params else {}
         params.update({"page_size": 2500})
 
-        next_url: Optional[str] = self._build_url(resource.value)
+        next_url: str | None = self._build_url(resource.value)
         while next_url is not None:
-            resp = self.do_request("GET", next_url, params=params)
+            resp = self.do("GET", next_url, params=params)
             data = resp.json()
             yield from data.get("results", [])
 
@@ -218,15 +247,15 @@ class Client:
         url = resource.value
         params = {"fields": ",".join(fields)} if fields else None
 
-        return self.do_request("POST", url, data=data, params=params)
+        return self.do("POST", url, data=data, params=params)
 
     def update(self, resource: Resource, id: str, data: Any, *fields: str) -> Response:
-        url = resource.value + "/" + id
+        url = parse.urljoin(resource.value, id)
         params = {"fields": ",".join(fields)} if fields else None
 
-        return self.do_request("PATCH", url, data=data, params=params)
+        return self.do("PATCH", url, data=data, params=params)
 
     def delete(self, resource: Resource, id: str) -> Response:
-        url = resource.value + "/" + id
+        url = parse.urljoin(resource.value, id)
 
-        return self.do_request("DELETE", url)
+        return self.do("DELETE", url)

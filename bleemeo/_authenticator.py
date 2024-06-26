@@ -13,13 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Optional
 from urllib import parse
 
 import requests
 
-from .exceptions import AuthenticationError, APIError
+from .exceptions import APIError, AuthenticationError
 
 
 class Authenticator:
@@ -28,40 +28,39 @@ class Authenticator:
         api_url: str,
         session: requests.Session,
         oauth_id: str,
-        oauth_secret: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        oauth_initial_refresh_token: Optional[str] = None,
+        oauth_secret: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        oauth_initial_refresh_token: str | None = None,
     ):
         self.api_url = api_url
-        self._insecure = not api_url.startswith("https://")
         self.session = session
         self.oauth_client_id = oauth_id
         self.oauth_client_secret = oauth_secret
         self.username = username
         self.password = password
-        self.oauth_initial_refresh_token = oauth_initial_refresh_token
 
-        self.__current_token: Optional[str] = None
-        self.__current_refresh: Optional[str] = None
+        self._current_token: str | None = None
+        self._current_refresh: str | None = oauth_initial_refresh_token
 
     def get_token(self, force_refetch: bool = False) -> str:
-        if not self.__current_token or force_refetch:
+        if not self._current_token or force_refetch:
             self.__authenticate()
 
-        return str(self.__current_token)
+        return str(self._current_token)
 
     def __authenticate(self) -> None:
         url = parse.urljoin(self.api_url, "/o/token/")
 
-        if self.__current_refresh or self.oauth_initial_refresh_token:
-            refresh_token = self.__current_refresh or self.oauth_initial_refresh_token
+        if self._current_refresh:
             data = {
                 "grant_type": "refresh_token",
-                "refresh_token": refresh_token,
+                "refresh_token": self._current_refresh,
                 "client_id": self.oauth_client_id,
-                "client_secret": self.oauth_client_secret,
             }
+
+            if self.oauth_client_secret:
+                data["client_secret"] = self.oauth_client_secret
 
             response = self.session.post(
                 url,
@@ -71,25 +70,23 @@ class Authenticator:
                 },
                 data=data,
                 timeout=10,
-                verify=not self._insecure,
             )
             if response.status_code == 200:
                 response_data = response.json()
-                self.__current_token = response_data["access_token"]
-                self.__current_refresh = response_data["refresh_token"]
-
-                if self.oauth_initial_refresh_token:  # Won't be used no more
-                    self.oauth_initial_refresh_token = None
+                self._current_token = response_data["access_token"]
+                self._current_refresh = response_data["refresh_token"]
 
                 return
 
         data = {
             "grant_type": "password",
-            "username": self.username,
-            "password": self.password,
+            "username": str(self.username),
+            "password": self.password or "",
             "client_id": self.oauth_client_id,
-            "client_secret": self.oauth_client_secret,
         }
+
+        if self.oauth_client_secret:
+            data["client_secret"] = self.oauth_client_secret
 
         response = self.session.post(
             url,
@@ -99,7 +96,6 @@ class Authenticator:
             },
             data=data,
             timeout=10,
-            verify=not self._insecure,
         )
         if response.status_code != 200:
             raise AuthenticationError(
@@ -107,16 +103,16 @@ class Authenticator:
             )
 
         response_data = response.json()
-        self.__current_token = response_data["access_token"]
-        self.__current_refresh = response_data["refresh_token"]
+        self._current_token = response_data["access_token"]
+        self._current_refresh = response_data["refresh_token"]
 
     def logout(self) -> None:
-        if not self.__current_refresh:
+        if not self._current_refresh:
             return
 
         url = parse.urljoin(self.api_url, "/o/revoke_token/")
         data = {
-            "token": self.__current_refresh,
+            "token": self._current_refresh,
             "client_id": self.oauth_client_id,
             "token_type_hint": "refresh_token",
         }
@@ -132,12 +128,11 @@ class Authenticator:
             },
             data=data,
             timeout=10,
-            verify=not self._insecure,
         )
         if response.status_code != 200:
             raise APIError(
                 f"Failed to revoke token, status={response.status_code}", response
             )
 
-        self.__current_token = None
-        self.__current_refresh = None
+        self._current_token = None
+        self._current_refresh = None

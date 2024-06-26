@@ -1,7 +1,7 @@
-from bleemeo import Client, Resource, APIError
+from bleemeo import APIError, Client, Resource
 
 
-def get_metric_data():
+def get_metric_data() -> None:
     client = Client(load_from_env=True)
 
     try:
@@ -13,13 +13,13 @@ def get_metric_data():
             params={"active": True, "fields": "id,label"},
         )
 
-        page = resp_page.json()
-        if len(page["results"]) == 0:
+        results = resp_page.json()["results"]
+        if len(results) == 0:
             print("No metric found")
             return
 
-        metric = page["results"][0]
-        resp_data = client.do_request("GET", f"/{Resource.METRIC}/{metric['id']}/data/")
+        metric = results[0]
+        resp_data = client.do("GET", f"/{Resource.METRIC}{metric['id']}/data/")
 
         values = resp_data.json()["values"]
         print(f"Found {len(values)} data points for metric '{metric['label']}'")

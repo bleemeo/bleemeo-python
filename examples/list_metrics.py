@@ -1,19 +1,23 @@
-from bleemeo import Client, APIError, Resource
+from bleemeo import APIError, Client, Resource
 
 
-def list_metrics():
+def list_metrics() -> None:
     with Client(load_from_env=True) as client:
         try:
             metric_iterator = client.iterate(
                 Resource.METRIC, {"active": True, "fields": "id,label"}
             )
-            for i, metric in enumerate(metric_iterator):
-                if i < 200:
+            count = 0
+            for metric in metric_iterator:
+                count += 1
+                if count <= 200:
                     print(f"-> {metric}")
-                elif i == 200:
+                elif count == 201:
                     print(
                         "Listing has more than 200 metrics, only the first 200 metrics are shown"
                     )
+
+            print(f"Successfully retrieved {count} metrics from API")
         except APIError as e:
             print(f"API error: {e}:\n{e.response.text}")
 

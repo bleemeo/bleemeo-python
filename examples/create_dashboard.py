@@ -1,7 +1,7 @@
-from bleemeo import Client, Resource, APIError, Graph
+from bleemeo import APIError, Client, Graph, Resource
 
 
-def create_dashboard():
+def create_dashboard() -> None:
     client = Client(load_from_env=True)
 
     try:

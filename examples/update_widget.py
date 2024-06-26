@@ -1,7 +1,7 @@
-from bleemeo import Client, APIError, Resource
+from bleemeo import APIError, Client, Resource
 
 
-def update_widget():
+def update_widget() -> None:
     client = Client(load_from_env=True)
 
     try:
