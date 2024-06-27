@@ -47,7 +47,8 @@ class Client:
         oauth_client_secret: str | None = None,
         oauth_initial_refresh_token: str | None = None,
         custom_headers: dict[str, Any] | None = None,
-        throttle_max_auto_retry_delay: int | None = None,
+        throttle_max_auto_retry_delay: int
+        | None = DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY,
         load_from_env: bool = False,
     ):
         if load_from_env:
@@ -76,9 +77,7 @@ class Client:
         self.oauth_client_id = oauth_client_id or self.DEFAULT_OAUTH_CLIENT_ID
         self.oauth_client_secret = oauth_client_secret
         self.oauth_initial_refresh_token = oauth_initial_refresh_token
-        self.throttle_max_auto_retry_delay = (
-            throttle_max_auto_retry_delay or self.DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY
-        )
+        self.throttle_max_auto_retry_delay = throttle_max_auto_retry_delay
         self.session = Session()
         self.session.headers = {
             "User-Agent": self.DEFAULT_USER_AGENT,
@@ -190,12 +189,12 @@ class Client:
             response = self._do_request_handling(authenticated, method, req)
         except ThrottleError as throttle_error:
             if (
-                self.throttle_max_auto_retry_delay is None
+                not self.throttle_max_auto_retry_delay
                 or throttle_error.delay_seconds > self.throttle_max_auto_retry_delay
             ):
                 raise throttle_error
 
-            time.sleep(self.throttle_max_auto_retry_delay)
+            time.sleep(throttle_error.delay_seconds)
 
             response = self._do_request_handling(authenticated, method, req)
 

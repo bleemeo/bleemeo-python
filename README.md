@@ -78,4 +78,3 @@ set to `True`.**
 | Initial refresh token         | `oauth_initial_refresh_token`             | `BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN`                     | None. This is an alternative to username & password credentials.     |
 | Custom headers                | `custom_headers`                          | -                                                         | `{"User-Agent": "Bleemeo Python Client"}`                            |
 | Throttle max auto retry delay | `throttle_max_auto_retry_delay`           | -                                                         | 1 minute.                                                            |
-
