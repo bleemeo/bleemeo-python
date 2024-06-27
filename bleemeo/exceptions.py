@@ -21,20 +21,35 @@ import requests
 
 
 class ConfigurationError(Exception):
+    """A ConfigurationError is raised when a misconfiguration is detected."""
+
     pass
 
 
 class APIError(Exception):
+    """
+    An APIError is raised when the API returns a non-successful status code.
+    It serves as superclass for AuthenticationError and ThrottleError.
+    """
+
     def __init__(self, message: str, response: requests.Response) -> None:
         super(Exception, self).__init__(message)
         self.response = response
 
 
 class AuthenticationError(APIError):
+    """An AuthenticationError is raised when the API returns a 401 - Unauthorized status code."""
+
     pass
 
 
 class ThrottleError(APIError):
+    """
+    A ThrottleError is raised when the API returns a 429 - Too Many Requests status code.
+    It contains the delay and the deadline until a new request can safely be sent.
+    If the error is not raised from the throttle-prevention mechanism, it also contains the API response.
+    """
+
     def __init__(
         self,
         response: requests.Response | None = None,
@@ -54,4 +69,5 @@ class ThrottleError(APIError):
 
     @classmethod
     def prevent(cls, delay_seconds: int) -> ThrottleError:
+        """prevent can be used to build a ThrottleError without actually sending the request to the API."""
         return cls(response=None, delay_seconds=delay_seconds)

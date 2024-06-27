@@ -6,7 +6,7 @@ def create_dashboard() -> None:
 
     try:
         resp_dashboard = client.create(
-            Resource.DASHBOARD, {"name": "My dashboard"}, "id", "name"
+            Resource.DASHBOARD, {"name": "My dashboard"}, ("id", "name")
         )
         dashboard = resp_dashboard.json()
         print(f"Successfully created dashboard: {dashboard}")
@@ -18,7 +18,7 @@ def create_dashboard() -> None:
             "graph": Graph.TEXT,
         }
         resp_widget = client.create(
-            Resource.WIDGET, widget_body, "id", "title", "graph"
+            Resource.WIDGET, widget_body, ("id", "title", "graph")
         )
         widget = resp_widget.json()
         print(f"Successfully created widget: {widget}")

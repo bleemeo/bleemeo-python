@@ -18,6 +18,8 @@ from enum import Enum
 
 
 class Resource(Enum):
+    """A Resource represents a route to a model on the Bleemeo API."""
+
     ACCOUNT = "v1/account/"
     ACCOUNT_CONFIG = "v1/accountconfig/"
     AGENT_CONFIG = "v1/agentconfig/"

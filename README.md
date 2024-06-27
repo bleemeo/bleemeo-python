@@ -9,11 +9,11 @@ Python library for interacting with the Bleemeo API
 
 ## Installation
 
-#### TODO
+### TODO
 
 ## Documentation
 
-The Python library documentation can be found [here](https://github.com/bleemeo/bleemeo-python).
+The Python library documentation can be found [here](https://github.com/bleemeo/bleemeo-python). // TODO
 
 Some examples of library usage can be found in [examples](./examples).
 
@@ -28,7 +28,8 @@ from bleemeo import Client, Resource, APIError
 def list_agents():
     with Client(load_from_env=True) as client:
         try:
-            resp_page = client.get_page(Resource.AGENT, page=1, page_size=10, params={"active": True})
+            resp_page = client.get_page(Resource.AGENT, page=1, page_size=10,
+                                        params={"active": True, "fields": "id,fqdn,display_name"})
             for agent in resp_page.json()["results"]:
                 print(f"* Agent {agent['display_name']} (fqdn = {agent['fqdn']}, id = {agent['id']})")
         except APIError as e:
@@ -60,7 +61,7 @@ BLEEMEO_USER=user-email@domain.com BLEEMEO_PASSWORD=password python3 examples/li
 At least the following options should be configured (as environment variables or with options):
 
 - Credentials OR initial refresh token
-- All other configuration are optional and could be omitted
+- All other configuration options are optional and could be omitted
 
 > Ways to provide those options are referenced in the [Configuration](#configuration) section.
 

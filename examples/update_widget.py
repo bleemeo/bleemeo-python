@@ -21,8 +21,7 @@ def update_widget() -> None:
             Resource.WIDGET,
             results[0]["id"],
             {"title": "This is my widget"},
-            "id",
-            "dashboard",
+            ("id", "dashboard"),
         )
 
         widget = resp_widget.json()

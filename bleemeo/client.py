@@ -31,6 +31,11 @@ from .resources import Resource
 
 
 class Client:
+    """
+    A Client is a helper to interact with the Bleemeo API,
+    providing methods to retrieve, list, create, update and delete resources.
+    """
+
     DEFAULT_ENDPOINT = "https://api.bleemeo.com"
     DEFAULT_OAUTH_CLIENT_ID = "1fc6de3e-8750-472e-baea-3ba22bb4eb56"
     DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY = 60  # seconds
@@ -51,6 +56,28 @@ class Client:
         | None = DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY,
         load_from_env: bool = False,
     ):
+        """
+        The credentials (username or initial refresh token) are the only mandatory parameters.
+        They can alternatively be provided as environment variables, by setting `load_from_env` to True.
+        See the [README](https://github.com/bleemeo/bleemeo-python/#configuration) for extended details.
+
+        Args:
+            api_url (str | None): Base URL to access the Bleemeo API.
+            account_id (str | None): Your Bleemeo account ID.
+            username (str | None): Your Bleemeo username.
+            password (str | None): Your Bleemeo password.
+            oauth_client_id (str | None): Your Bleemeo OAuth client ID.
+            oauth_client_secret (str | None): Your Bleemeo OAuth client secret.
+            oauth_initial_refresh_token (str | None): An initial OAuth refresh token
+                (as an alternative to username/password credentials).
+            custom_headers (dict[str, Any]): Additional headers to pass to the Bleemeo API.
+            throttle_max_auto_retry_delay (int | None): Maximum number of seconds to wait
+                for retrying a throttled request (can be set to 0 or None not to retry at all).
+            load_from_env (bool): Whether to load environment variables as Client parameters.
+
+        Raises:
+            ConfigurationError: If neither credentials nor initial refresh token are provided.
+        """
         if load_from_env:
             api_url = api_url or os.environ.get("BLEEMEO_API_URL")
             account_id = account_id or os.environ.get("BLEEMEO_ACCOUNT_ID")
@@ -68,7 +95,7 @@ class Client:
 
         if not username and not oauth_initial_refresh_token:
             raise ConfigurationError(
-                "Either a username or an initial oAuth refresh token must be provided."
+                "Either a username or an initial OAuth refresh token must be provided."
             )
 
         self.api_url = api_url or self.DEFAULT_ENDPOINT
@@ -81,6 +108,7 @@ class Client:
         self.session = Session()
         self.session.headers = {
             "User-Agent": self.DEFAULT_USER_AGENT,
+            "Accept": "application/json",
         }
 
         if account_id:
@@ -106,6 +134,7 @@ class Client:
         self.logout()
 
     def logout(self) -> None:
+        """logout revokes the OAuth token, preventing it from being reused."""
         self._authenticator.logout()
         self.session.close()
 
@@ -142,9 +171,7 @@ class Client:
 
         return resp
 
-    def _do_request_handling(
-        self, authenticated: bool, method: str, req: Request
-    ) -> Response:
+    def _do_with_error_handling(self, authenticated: bool, req: Request) -> Response:
         response = self._do_request(req, authenticated)
         if response.status_code >= 400:
             if response.status_code == 400:  # Bad Request
@@ -161,7 +188,7 @@ class Client:
                 raise throttle_error
 
             raise APIError(
-                f"Request {method} on {req.url} failed with status {response.status_code}",
+                f"Request {req.method} on {req.url} failed with status {response.status_code}",
                 response,
             )
         return response
@@ -174,6 +201,27 @@ class Client:
         params: dict[str, Any] | None = None,
         data: Any | None = None,
     ) -> Response:
+        """
+        do is a lower-level method to build and execute the request according to the given parameters.
+        It raises errors depending on the received response, and handles throttled requests retry.
+
+        When possible, prefer the higher-level get, get_page, count, iterate, create, update and delete.
+
+        Args:
+            method (str): The HTTP method to execute the request as.
+            url (str): The (relative) URL on which to execute the request.
+            authenticated (bool): Whether the request should be authenticated.
+            params (dict[str, Any]): The parameters to pass to the request.
+            data (Any | None): The body of the request in case of a POST or a PATCH.
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         time_to_wait = self._throttle_deadline - datetime.now()
         if time_to_wait > timedelta(seconds=0):
             raise ThrottleError.prevent(math.ceil(time_to_wait.total_seconds()))
@@ -186,7 +234,7 @@ class Client:
         )
 
         try:
-            response = self._do_request_handling(authenticated, method, req)
+            response = self._do_with_error_handling(authenticated, req)
         except ThrottleError as throttle_error:
             if (
                 not self.throttle_max_auto_retry_delay
@@ -196,13 +244,29 @@ class Client:
 
             time.sleep(throttle_error.delay_seconds)
 
-            response = self._do_request_handling(authenticated, method, req)
+            response = self._do_with_error_handling(authenticated, req)
 
         return response
 
     def get(
         self, resource: Resource, id: str, fields: Sequence[str] | None = None
     ) -> Response:
+        """
+        get retrieves the resource with the given id with only the given fields, if any.
+
+        Args:
+            resource (Resource): The kind of resource to retrieve.
+            id (str): The id of the resource to retrieve.
+            fields (Sequence[str] | None, optional): Specific fields to retrieve. Defaults to None (only the default ones).
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         url = parse.urljoin(resource.value, id)
         params = {"fields": ",".join(fields)} if fields else None
 
@@ -216,6 +280,25 @@ class Client:
         page_size: int = 25,
         params: dict[str, Any] | None = None,
     ) -> Response:
+        """
+        get_page retrieves a given-page-sized list of resources matching the given params at the given page.
+        To collect all the resources matching some params (i.e., instead of querying all pages one by one),
+        prefer using the `iterate()` method which is faster.
+
+        Args:
+            resource (Resource): The kind of resource to retrieve.
+            page (int): The number of the page to retrieve.
+            page_size (int): The size of the page to retrieve.
+            params (dict[str, Any]): The parameters the resources should match.
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         url = resource.value
         params = params.copy() if params else {}
         params.update({"page": page, "page_size": page_size})
@@ -223,6 +306,21 @@ class Client:
         return self.do("GET", url, params=params)
 
     def count(self, resource: Resource, params: dict[str, Any] | None = None) -> int:
+        """
+        count returns the number of resources matching the given params.
+
+        Args:
+            resource (Resource): The kind of resource to count.
+            params (dict[str, Any]): The parameters the resources should match.
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         resp = self.get_page(resource, page=1, page_size=0, params=params)
 
         return int(resp.json()["count"])
@@ -230,6 +328,18 @@ class Client:
     def iterate(
         self, resource: Resource, params: dict[str, Any] | None = None
     ) -> Iterator[dict[str, Any]]:
+        """
+        iterate yields the resources of the given kind matching the given params.
+
+        Args:
+            resource (Resource): The kind of resource to iterate.
+            params (dict[str, Any]): The parameters the resources should match.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         params = params.copy() if params else {}
         params.update({"page_size": 2500})
 
@@ -242,19 +352,78 @@ class Client:
             next_url = data.get("next", None)
             params = None  # Avoid duplicating the params, which are already given back in the next URL.
 
-    def create(self, resource: Resource, data: Any, *fields: str) -> Response:
+    def create(
+        self, resource: Resource, data: Any, fields: Sequence[str] | None = None
+    ) -> Response:
+        """
+        create creates a new resource of the given kind with the given data.
+        Fields expected to be returned can be specified as varargs.
+
+        Args:
+            resource (Resource): The kind of resource to create.
+            data (Any): The body of the POST request.
+            fields (Sequence[str] | None): Specific fields to retrieve. Defaults to None (only the default ones).
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         url = resource.value
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do("POST", url, data=data, params=params)
 
-    def update(self, resource: Resource, id: str, data: Any, *fields: str) -> Response:
+    def update(
+        self,
+        resource: Resource,
+        id: str,
+        data: Any,
+        fields: Sequence[str] | None = None,
+    ) -> Response:
+        """
+        update updates the resource of the given kind and id with the given data.
+        Since the request is sent as a PATCH, only the fields specified in the body (data) will be updated.
+        Fields expected to be returned can be specified as varargs.
+
+        Args:
+            resource (Resource): The kind of resource to update.
+            id (str): The ID of the resource to update.
+            data (Any): The body of the PATCH request.
+            fields (Sequence[str] | None): Specific fields to retrieve. Defaults to None (only the default ones).
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         url = parse.urljoin(resource.value, id)
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do("PATCH", url, data=data, params=params)
 
     def delete(self, resource: Resource, id: str) -> Response:
+        """
+        delete deletes the resource of the given kind and id from the server.
+
+        Args:
+            resource (Resource): The kind of resource to delete.
+            id (str): The ID of the resource to delete.
+
+        Returns:
+            Response: The response to the request.
+
+        Raises:
+            AuthenticationError: If the authentication fails.
+            ThrottleError: If too many requests are sent too close.
+            APIError: When receiving a non-successful status code not covered by the above exceptions.
+        """
         url = parse.urljoin(resource.value, id)
 
         return self.do("DELETE", url)
