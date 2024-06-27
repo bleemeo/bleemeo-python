@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib import parse
 
-from requests import Request, Response, Session
+from requests import PreparedRequest, Request, Response, Session
 
 from ._authenticator import Authenticator
 from .exceptions import APIError, AuthenticationError, ConfigurationError, ThrottleError
@@ -146,6 +146,10 @@ class Client:
             url = url + "/"
         return url
 
+    def _send(self, req: PreparedRequest, settings: Any) -> Response:
+        """_send wraps `Session.send()` to make it easily mockable."""
+        return self.session.send(req, **settings)
+
     def _do_request(
         self, request: Request, authenticated: bool, is_retry: bool = False
     ) -> Response:
@@ -165,7 +169,8 @@ class Client:
         settings = self.session.merge_environment_settings(
             prep.url, {}, None, None, None
         )
-        resp = self.session.send(prep, **settings)
+
+        resp = self._send(prep, settings)
         if resp.status_code == 401 and authenticated and not is_retry:
             resp = self._do_request(request, authenticated=True, is_retry=True)
 
