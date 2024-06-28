@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import unittest
-from typing import Any, Callable
+from typing import Any, Protocol
 from unittest import mock
 
-from bleemeo import ConfigurationError, Client, Resource
+from bleemeo import Client, ConfigurationError, Resource
 from bleemeo._authenticator import Authenticator
 
 
@@ -16,43 +18,127 @@ class _MockResponse:
         return json.loads(self.content)
 
 
+class _ClientTestCase:
+    def __init__(
+        self,
+        client_method: str,
+        client_params: dict[str, Any],
+        response: _MockResponse,
+        expected_exception: type[Exception] | None = None,
+        expected_json: dict[str, Any] | None = None,
+        expected_retval: Any | None = None,
+    ) -> None:
+        self.client_method = client_method
+        self.client_params = client_params
+        self.response = response
+        self.expected_exception = expected_exception
+        self.expected_json = expected_json
+        self.expected_retval = expected_retval
+
+
+class ClientMethod(Protocol):
+    def __call__(self, **params: Any) -> Any: ...
+
+
+class _Executor:
+    def __init__(self, fn: ClientMethod, params: dict[str, Any]) -> None:
+        self._fn = fn
+        self._params = params
+        self.result: Any | None = None
+
+    def execute(self) -> None:
+        self.result = self._fn(**self._params)
+
+
 class ClientTest(unittest.TestCase):
     def test_configuration_validation(self) -> None:
         # Initializing a Client without credentials nor initial refresh token should raise an exception
         self.assertRaises(ConfigurationError, Client)
 
-    def test_client_do(self) -> None:
+    def test_client_methods(self) -> None:
         test_cases = [
-            {
-                "client_method": "get",
-                "client_params": {"resource": Resource.METRIC, "id": "000"},
-                "resp_code": 200,
-                "resp_content": b'{"id":"000"}',
-                "expected_exception": None,
-                "expected_value": None,
-                "expected_json": {"id": "000"}
-            }
+            _ClientTestCase(
+                client_method="get",
+                client_params={
+                    "resource": Resource.METRIC,
+                    "id": "1",
+                    "fields": ("id",),
+                },
+                response=_MockResponse(200, b'{"id":"1"}'),
+                expected_json={"id": "1"},
+            ),
+            _ClientTestCase(
+                client_method="get_page",
+                client_params={"resource": Resource.AGENT, "page_size": 2},
+                response=_MockResponse(
+                    200, b'{"results":[{"id":"1"},{"id":"2"}],"count":2}'
+                ),
+                expected_json={"results": [{"id": "1"}, {"id": "2"}], "count": 2},
+            ),
+            _ClientTestCase(
+                client_method="count",
+                client_params={"resource": Resource.WIDGET},
+                response=_MockResponse(
+                    200, b'{"results":[{"id":"1"},{"id":"2"},{"id":"3"}],"count":3}'
+                ),
+                expected_json={
+                    "results": [{"id": "1"}, {"id": "2"}, {"id": "3"}],
+                    "count": 3,
+                },
+                expected_retval=3,
+            ),
+            _ClientTestCase(
+                client_method="create",
+                client_params={
+                    "resource": Resource.DASHBOARD,
+                    "data": {"name": "D"},
+                    "fields": "id,name",
+                },
+                response=_MockResponse(201, b'{"id":"1","name":"D"}'),
+                expected_json={"id": "1", "name": "D"},
+            ),
+            _ClientTestCase(
+                client_method="update",
+                client_params={
+                    "resource": Resource.ACCOUNT,
+                    "id": "1",
+                    "data": {"name": "A"},
+                    "fields": ("id", "name"),
+                },
+                response=_MockResponse(200, b'{"id":"1","name":"A"}'),
+                expected_json={"id": "1", "name": "A"},
+            ),
+            _ClientTestCase(
+                client_method="delete",
+                client_params={"resource": Resource.TAG, "id": "1"},
+                response=_MockResponse(204, b""),
+            ),
         ]
 
         with mock.patch.object(Authenticator, "get_token", return_value="token"):
             for tc in test_cases:
-                with self.subTest():
-                    with mock.patch.object(Client, "_send",
-                                           return_value=_MockResponse(tc["resp_code"], tc["resp_content"])):
+                with self.subTest(
+                    f"{tc.client_method} - {tc.client_params['resource']}"
+                ):
+                    with mock.patch.object(
+                        Client,
+                        "_send",
+                        return_value=tc.response,
+                    ):
                         client = Client(username="test")
-                        method = getattr(client, tc["client_method"])
-                        executor: Callable[[], Any] = lambda: method(**tc["client_params"])
+                        method = getattr(client, tc.client_method)
+                        executor = _Executor(method, tc.client_params)
 
-                        if tc["expected_exception"] is not None:
-                            result = self.assertRaises(tc["expected_exception"], executor)
+                        if tc.expected_exception is not None:
+                            self.assertRaises(tc.expected_exception, executor.execute)
                         else:
-                            result = executor()
+                            executor.execute()
 
-                        if tc["expected_value"] is not None:
-                            self.assertEqual(tc["expected_value"], result)
-                        elif tc["expected_json"] is not None:
-                            self.assertEqual(tc["expected_json"], result.json())
+                        if tc.expected_retval is not None:
+                            self.assertEqual(tc.expected_retval, executor.result)
+                        elif tc.expected_json is not None:
+                            self.assertEqual(tc.expected_json, executor.result.json())  # type: ignore
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
