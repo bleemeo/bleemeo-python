@@ -10,7 +10,7 @@ def update_widget() -> None:
             Resource.WIDGET,
             page=page,
             page_size=page_size,
-            params={"title": "My widget", "fields": "id"},
+            params={"title": "My widget"},
         )
         results = resp_page.json()["results"]
         if len(results) == 0:
@@ -18,14 +18,11 @@ def update_widget() -> None:
             return
 
         resp_widget = client.update(
-            Resource.WIDGET,
-            results[0]["id"],
-            {"title": "This is my widget"},
-            ("id", "dashboard"),
+            Resource.WIDGET, results[0]["id"], {"title": "This is my widget"}
         )
 
         widget = resp_widget.json()
-        print(f"Successfully updated widget: {widget}")
+        print(f"Successfully updated widget: {widget['title']} ({widget['id']})")
         print(f"Check it on https://panel.bleemeo.com/dashboard/{widget['dashboard']}")
     except APIError as e:
         print(f"API error: {e}:\n{e.response.text}")

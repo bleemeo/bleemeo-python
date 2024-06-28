@@ -10,7 +10,7 @@ def get_metric_data() -> None:
             Resource.METRIC,
             page=page,
             page_size=page_size,
-            params={"active": True, "fields": "id,label"},
+            params={"active": True},
         )
 
         results = resp_page.json()["results"]

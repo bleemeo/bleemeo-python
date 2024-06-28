@@ -5,11 +5,11 @@ def create_dashboard() -> None:
     client = Client(load_from_env=True)
 
     try:
-        resp_dashboard = client.create(
-            Resource.DASHBOARD, {"name": "My dashboard"}, ("id", "name")
-        )
+        resp_dashboard = client.create(Resource.DASHBOARD, {"name": "My dashboard"})
         dashboard = resp_dashboard.json()
-        print(f"Successfully created dashboard: {dashboard}")
+        print(
+            f"Successfully created dashboard: {dashboard['name']} ({dashboard['id']})"
+        )
         print(f"View it on https://panel.bleemeo.com/dashboard/{dashboard['id']}")
 
         widget_body = {
@@ -17,11 +17,9 @@ def create_dashboard() -> None:
             "title": "My widget",
             "graph": Graph.TEXT,
         }
-        resp_widget = client.create(
-            Resource.WIDGET, widget_body, ("id", "title", "graph")
-        )
+        resp_widget = client.create(Resource.WIDGET, widget_body)
         widget = resp_widget.json()
-        print(f"Successfully created widget: {widget}")
+        print(f"Successfully created widget: {widget['title']} ({widget['id']})")
     except APIError as e:
         print(f"API error: {e}:\n{e.response.text}")
     finally:
