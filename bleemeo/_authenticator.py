@@ -77,7 +77,7 @@ class Authenticator:
                 url,
                 headers={
                     "X-Requested-With": "XMLHttpRequest",
-                    "Content-type": "application/x-www-form-urlencoded",
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
                 data=data,
                 timeout=10,
@@ -108,7 +108,7 @@ class Authenticator:
             url,
             headers={
                 "X-Requested-With": "XMLHttpRequest",
-                "Content-type": "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded",
             },
             data=data,
             timeout=10,

@@ -19,15 +19,27 @@ import json
 import unittest
 from typing import Any, Protocol
 from unittest import mock
+from unittest.mock import PropertyMock
 
-from bleemeo import Client, ConfigurationError, Resource
+import requests
+
+from bleemeo import (
+    APIError,
+    Client,
+    ConfigurationError,
+    Resource,
+    ThrottleError,
+)
 from bleemeo._authenticator import Authenticator
 
 
 class _MockResponse:
-    def __init__(self, status_code: int, content: bytes):
+    def __init__(
+        self, status_code: int, content: bytes, headers: dict[str, str] | None = None
+    ):
         self.status_code = status_code
         self.content = content
+        self.headers = headers or {}
 
     def json(self) -> Any:
         return json.loads(self.content)
@@ -70,6 +82,85 @@ class ClientTest(unittest.TestCase):
         # Initializing a Client without credentials nor initial refresh token should raise an exception
         self.assertRaises(ConfigurationError, Client)
 
+    def test_authentication(self) -> None:
+        username, password = "usr", "passwd"
+        client_id, client_secret = "oci", "ocs"
+        access_token, refresh_token = "atk", "rtk"
+        access_token_2, refresh_token_2 = "atk2", "rtk2"
+
+        def _fake_password_handler(
+            _: requests.Session,
+            url: str,
+            headers: dict[str, str],
+            data: dict[str, str],
+            **kwargs: Any,
+        ) -> _MockResponse:
+            self.assertEqual(url, "http://api.url/o/token/", "Invalid OAuth URL")
+
+            self.assertIn("Content-Type", headers)
+            self.assertEqual(
+                headers["Content-Type"], "application/x-www-form-urlencoded"
+            )
+
+            self.assertDictEqual(
+                data,
+                {
+                    "grant_type": "password",
+                    "username": username,
+                    "password": password,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+            )
+
+            resp_body = f'{{"access_token": "{access_token}", "expires_in": 36000, "refresh_token": "{refresh_token}", "scope": "read write", "token_type": "Bearer"}}'
+            return _MockResponse(200, str.encode(resp_body))
+
+        def _fake_refresh_handler(
+            _: requests.Session,
+            url: str,
+            headers: dict[str, str],
+            data: dict[str, str],
+            **kwargs: Any,
+        ) -> _MockResponse:
+            self.assertEqual(url, "http://api.url/o/token/", "Invalid OAuth URL")
+
+            self.assertIn("Content-Type", headers)
+            self.assertEqual(
+                headers["Content-Type"], "application/x-www-form-urlencoded"
+            )
+
+            self.assertDictEqual(
+                data,
+                {
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+            )
+
+            resp_body = f'{"access_token": "{access_token_2}", "expires_in": 36000, "refresh_token": "{refresh_token_2}", "scope": "read write", "token_type": "Bearer"}'
+            return _MockResponse(200, str.encode(resp_body))
+
+        client = Client(
+            api_url="http://api.url",
+            username=username,
+            password=password,
+            oauth_client_id=client_id,
+            oauth_client_secret=client_secret,
+        )
+
+        with mock.patch("requests.Session.post", _fake_password_handler):
+            self.assertTupleEqual(client.tokens, (access_token, refresh_token))
+
+        with mock.patch("requests.Session.post", _fake_refresh_handler):
+            with mock.patch.object(
+                Authenticator, "_current_token", new_callable=PropertyMock
+            ) as obj_mock:
+                obj_mock.return_value = None
+                self.assertTupleEqual(client.tokens, (access_token_2, refresh_token_2))
+
     def test_client_methods(self) -> None:
         test_cases = [
             _ClientTestCase(
@@ -83,12 +174,26 @@ class ClientTest(unittest.TestCase):
                 expected_json={"id": "1"},
             ),
             _ClientTestCase(
+                client_method="get",
+                client_params={"resource": Resource.ACCOUNT_CONFIG, "id": "bad"},
+                response=_MockResponse(404, b'{"detail":"Not Found"}'),
+                expected_exception=APIError,
+            ),
+            _ClientTestCase(
                 client_method="get_page",
                 client_params={"resource": Resource.AGENT, "page_size": 2},
                 response=_MockResponse(
                     200, b'{"results":[{"id":"1"},{"id":"2"}],"count":2}'
                 ),
                 expected_json={"results": [{"id": "1"}, {"id": "2"}], "count": 2},
+            ),
+            _ClientTestCase(
+                client_method="get_page",
+                client_params={"resource": Resource.AGENT_FACT},
+                response=_MockResponse(
+                    429, b'{"detail":"Too Many Requests"}', headers={"Retry-After": "0"}
+                ),
+                expected_exception=ThrottleError,
             ),
             _ClientTestCase(
                 client_method="count",
