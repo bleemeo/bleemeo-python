@@ -13,6 +13,7 @@ Take a look at [venv](https://docs.python.org/3/tutorial/venv.html).
 This tool provides isolated Python environments, which are more practical than installing packages system-wide.
 
 After you’ve created and activated a virtual environment, run the command:
+
 ```shell
 python -m pip install --upgrade bleemeo
 ```
@@ -78,10 +79,10 @@ set to `True`.**
 
 | Property                      | Constructor parameter(s)                  | Env variable(s)                                           | Default values                                                       |
 |-------------------------------|-------------------------------------------|-----------------------------------------------------------|----------------------------------------------------------------------|
-| API URL                       | `api_url`                                 | `BLEEMEO_API_URL`                                         | `https://api.bleemeo.com`                                            |
 | Credentials                   | `username` & `password`                   | `BLEEMEO_USER` & `BLEEMEO_PASSWORD`                       | None. This option is required (unless initial refresh token is used) |
 | Bleemeo account header        | `account_id`                              | `BLEEMEO_ACCOUNT_ID`                                      | The first account associated with used credentials.                  |
 | OAuth client ID/secret        | `oauth_client_id` & `oauth_client_secret` | `BLEEMEO_OAUTH_CLIENT_ID` & `BLEEMEO_OAUTH_CLIENT_SECRET` | The default SDK OAuth client ID                                      |
+| API URL                       | `api_url`                                 | `BLEEMEO_API_URL`                                         | `https://api.bleemeo.com`                                            |
 | Initial refresh token         | `oauth_initial_refresh_token`             | `BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN`                     | None. This is an alternative to username & password credentials.     |
 | Custom headers                | `custom_headers`                          | -                                                         | `{"User-Agent": "Bleemeo Python Client"}`                            |
 | Throttle max auto retry delay | `throttle_max_auto_retry_delay`           | -                                                         | 1 minute.                                                            |
