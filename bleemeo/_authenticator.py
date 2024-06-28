@@ -45,6 +45,14 @@ class Authenticator:
         self._current_token: str | None = None
         self._current_refresh: str | None = oauth_initial_refresh_token
 
+    @property
+    def tokens(self) -> tuple[str, str]:
+        with self._lock:
+            if not self._current_token:
+                self.__authenticate()
+
+            return str(self._current_token), str(self._current_refresh)
+
     def get_token(self, force_refetch: bool = False) -> str:
         with self._lock:
             if not self._current_token or force_refetch:

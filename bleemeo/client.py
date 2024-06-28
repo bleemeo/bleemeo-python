@@ -133,6 +133,11 @@ class Client:
     def __exit__(self, *exc_info: Any) -> None:
         self.logout()
 
+    @property
+    def tokens(self) -> tuple[str, str]:
+        """tokens returns a tuple containing the current access and refresh tokens."""
+        return self._authenticator.tokens
+
     def logout(self) -> None:
         """logout revokes the OAuth token, preventing it from being reused."""
         self._authenticator.logout()
