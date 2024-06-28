@@ -78,6 +78,11 @@ class Authenticator:
 
                 return
 
+            if not self.username:
+                raise AuthenticationError(
+                    "The provided initial refresh token is invalid.", response
+                )
+
         data = {
             "grant_type": "password",
             "username": str(self.username),

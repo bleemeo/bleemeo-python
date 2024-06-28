@@ -9,7 +9,13 @@ Python library for interacting with the Bleemeo API
 
 ## Installation
 
-### TODO
+Take a look at [venv](https://docs.python.org/3/tutorial/venv.html).
+This tool provides isolated Python environments, which are more practical than installing packages system-wide.
+
+After you’ve created and activated a virtual environment, run the command:
+```shell
+python -m pip install --upgrade bleemeo
+```
 
 ## Documentation
 
