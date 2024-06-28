@@ -15,6 +15,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import threading
 from urllib import parse
 
 import requests
@@ -40,14 +41,16 @@ class Authenticator:
         self.username = username
         self.password = password
 
+        self._lock = threading.Lock()
         self._current_token: str | None = None
         self._current_refresh: str | None = oauth_initial_refresh_token
 
     def get_token(self, force_refetch: bool = False) -> str:
-        if not self._current_token or force_refetch:
-            self.__authenticate()
+        with self._lock:
+            if not self._current_token or force_refetch:
+                self.__authenticate()
 
-        return str(self._current_token)
+            return str(self._current_token)
 
     def __authenticate(self) -> None:
         url = parse.urljoin(self.api_url, "/o/token/")
@@ -112,32 +115,33 @@ class Authenticator:
         self._current_refresh = response_data["refresh_token"]
 
     def logout(self) -> None:
-        if not self._current_refresh:
-            return
+        with self._lock:
+            if not self._current_refresh:
+                return
 
-        url = parse.urljoin(self.api_url, "/o/revoke_token/")
-        data = {
-            "token": self._current_refresh,
-            "client_id": self.oauth_client_id,
-            "token_type_hint": "refresh_token",
-        }
+            url = parse.urljoin(self.api_url, "/o/revoke_token/")
+            data = {
+                "token": self._current_refresh,
+                "client_id": self.oauth_client_id,
+                "token_type_hint": "refresh_token",
+            }
 
-        if self.oauth_client_secret:
-            data["client_secret"] = self.oauth_client_secret
+            if self.oauth_client_secret:
+                data["client_secret"] = self.oauth_client_secret
 
-        response = self.session.post(
-            url,
-            headers={
-                "X-Requested-With": "XMLHttpRequest",
-                "Content-type": "application/x-www-form-urlencoded",
-            },
-            data=data,
-            timeout=10,
-        )
-        if response.status_code != 200:
-            raise APIError(
-                f"Failed to revoke token, status={response.status_code}", response
+            response = self.session.post(
+                url,
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Content-type": "application/x-www-form-urlencoded",
+                },
+                data=data,
+                timeout=10,
             )
+            if response.status_code != 200:
+                raise APIError(
+                    f"Failed to revoke token, status={response.status_code}", response
+                )
 
-        self._current_token = None
-        self._current_refresh = None
+            self._current_token = None
+            self._current_refresh = None
