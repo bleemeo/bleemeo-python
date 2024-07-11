@@ -134,6 +134,21 @@ class Client:
         self.logout()
 
     @property
+    def account_id(self) -> str | None:
+        return (
+            self.session.headers["X-Bleemeo-Account"]
+            if "X-Bleemeo-Account" in self.session.headers
+            else None
+        )
+
+    @account_id.setter
+    def account_id(self, account_id: str | None) -> None:
+        if account_id:
+            self.session.headers["X-Bleemeo-Account"] = account_id
+        else:
+            del self.session.headers["X-Bleemeo-Account"]
+
+    @property
     def tokens(self) -> tuple[str, str]:
         """tokens returns a tuple containing the current access and refresh tokens."""
         return self._authenticator.tokens
