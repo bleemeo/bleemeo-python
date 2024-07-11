@@ -26,7 +26,14 @@ from urllib import parse
 from requests import PreparedRequest, Request, Response, Session
 
 from ._authenticator import Authenticator
-from .exceptions import APIError, AuthenticationError, ConfigurationError, ThrottleError
+from .exceptions import (
+    APIError,
+    AuthenticationError,
+    BadRequestError,
+    ConfigurationError,
+    ResourceNotFoundError,
+    ThrottleError,
+)
 from .resources import Resource
 
 
@@ -136,7 +143,7 @@ class Client:
     @property
     def account_id(self) -> str | None:
         return (
-            self.session.headers["X-Bleemeo-Account"]
+            str(self.session.headers["X-Bleemeo-Account"])
             if "X-Bleemeo-Account" in self.session.headers
             else None
         )
@@ -200,13 +207,13 @@ class Client:
         response = self._do_request(req, authenticated)
         if response.status_code >= 400:
             if response.status_code == 400:  # Bad Request
-                raise APIError(f"Bad request on {req.url}", response)
+                raise BadRequestError(response)
             if response.status_code == 401:  # Unauthorized
                 raise AuthenticationError(
                     f"Authentication failed on {req.url}", response
                 )
             if response.status_code == 404:  # Not Found
-                raise APIError(f"Resource {req.url} not found", response)
+                raise ResourceNotFoundError(req.url, response)
             if response.status_code == 429:  # Too Many Requests
                 throttle_error = ThrottleError(response)
                 self._throttle_deadline = throttle_error.throttle_deadline

@@ -33,14 +33,34 @@ class APIError(Exception):
     """
 
     def __init__(self, message: str, response: requests.Response) -> None:
-        super(Exception, self).__init__(message)
+        super().__init__(message)
         self.response = response
+
+
+class BadRequestError(APIError):
+    """A BadRequestError is raised when the API returns a 400 - Bad Request status code."""
+
+    def __init__(self, response: requests.Response) -> None:
+        fields = response.json()
+        message = "Bad request:\n" + "\n".join(
+            [f"- {field}: {' / '.join(errors)}" for field, errors in fields.items()]
+        )
+        super().__init__(message, response)
+        self.error_fields = fields
 
 
 class AuthenticationError(APIError):
     """An AuthenticationError is raised when the API returns a 401 - Unauthorized status code."""
 
     pass
+
+
+class ResourceNotFoundError(APIError):
+    """A ResourceNotFoundError is raised when the API returns a 404 - Not Found status code."""
+
+    def __init__(self, url: str, response: requests.Response) -> None:
+        super().__init__(f"Resource {url} not found", response)
+        self.url = url
 
 
 class ThrottleError(APIError):
@@ -61,8 +81,9 @@ class ThrottleError(APIError):
         elif response is not None and "Retry-After":
             ds = int(response.headers.get("Retry-After") or 30)
 
-        super(APIError, self).__init__(
-            f"Throttle error: request must be retried after {ds}s.", response
+        super().__init__(
+            f"Throttle error: request must be retried after {ds}s.",
+            response or requests.Response(),
         )
         self.delay_seconds = ds
         self.throttle_deadline = datetime.now() + timedelta(seconds=ds)

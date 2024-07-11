@@ -21,7 +21,7 @@ def create_dashboard() -> None:
         widget = resp_widget.json()
         print(f"Successfully created widget: {widget['title']} ({widget['id']})")
     except APIError as e:
-        print(f"API error: {e}:\n{e.response.text}")
+        print(f"API error: {e}")
     finally:
         client.logout()
 

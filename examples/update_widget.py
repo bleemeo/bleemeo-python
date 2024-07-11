@@ -25,7 +25,7 @@ def update_widget() -> None:
         print(f"Successfully updated widget: {widget['title']} ({widget['id']})")
         print(f"Check it on https://panel.bleemeo.com/dashboard/{widget['dashboard']}")
     except APIError as e:
-        print(f"API error: {e}:\n{e.response.text}")
+        print(f"API error: {e}")
     finally:
         client.logout()
 
