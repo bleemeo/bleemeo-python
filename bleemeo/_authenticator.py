@@ -48,7 +48,7 @@ class Authenticator:
     @property
     def tokens(self) -> tuple[str, str]:
         with self._lock:
-            if not self._current_token:
+            if not isinstance(self._current_token, str):
                 self.__authenticate()
 
             return str(self._current_token), str(self._current_refresh)

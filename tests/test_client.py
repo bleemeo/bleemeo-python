@@ -140,7 +140,7 @@ class ClientTest(unittest.TestCase):
                 },
             )
 
-            resp_body = f'{"access_token": "{access_token_2}", "expires_in": 36000, "refresh_token": "{refresh_token_2}", "scope": "read write", "token_type": "Bearer"}'
+            resp_body = f'{{"access_token": "{access_token_2}", "expires_in": 36000, "refresh_token": "{refresh_token_2}", "scope": "read write", "token_type": "Bearer"}}'
             return _MockResponse(200, str.encode(resp_body))
 
         client = Client(
@@ -156,9 +156,9 @@ class ClientTest(unittest.TestCase):
 
         with mock.patch("requests.Session.post", _fake_refresh_handler):
             with mock.patch.object(
-                Authenticator, "_current_token", new_callable=PropertyMock
-            ) as obj_mock:
-                obj_mock.return_value = None
+                client._authenticator, "_current_token", new_callable=PropertyMock
+            ) as tk_mock:
+                tk_mock.return_value = None # In facts, the value doesn't matter; it just needs not to be a string.
                 self.assertTupleEqual(client.tokens, (access_token_2, refresh_token_2))
 
     def test_client_methods(self) -> None:
