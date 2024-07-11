@@ -41,6 +41,7 @@ class Resource(Enum):
     INTEGRATION_TEMPLATE = "v1/integrationtemplate/"
     LIMIT = "v1/limit/"
     METRIC = "v1/metric/"
+    METRIC_ANNOTATION = "v1/metricannotation/"
     METRIC_NAME = "v1/metricname/"
     METRIC_OPERATION = "v1/metricoperation/"
     METRIC_TEMPLATE_GROUP = "v1/metrictemplategroup/"
