@@ -20,7 +20,7 @@ python -m pip install --upgrade bleemeo
 
 ## Documentation
 
-The Python library documentation can be found [here](https://github.com/bleemeo/bleemeo-python). // TODO
+The Python library is documented using docstring in [the source code](https://github.com/bleemeo/bleemeo-python/bleemeo).
 
 Some examples of library usage can be found in [examples](./examples).
 
