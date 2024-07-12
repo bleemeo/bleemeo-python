@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "bleemeo"
+version = "0.1.0"
+description = "A simple Python3 client for interacting with the Bleemeo API."
+authors = ["Thomas Delbende <thomas.delbende@bleemeo.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.32.3"
+
+
+[tool.poetry.group.dev.dependencies]
+tox = "*"
+mypy = "*"
+types-requests = "*"
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "B",
+    "C4",
+    "COM",
+    "E",
+    "F", # Pyflakes
+    "FLY", # flynt
+    "I",
+    "ISC",
+    "PERF",
+    "PL", # Pylint
+    "RUF",
+    "S", # Bandit
+    "UP",
+    "W",
+]
+# COM812: as recommended by ruff-format
+ignore = ["COM812", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "E501", "RUF012", "S311", "PERF203"]
