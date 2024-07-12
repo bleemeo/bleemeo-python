@@ -158,7 +158,7 @@ class ClientTest(unittest.TestCase):
             with mock.patch.object(
                 client._authenticator, "_current_token", new_callable=PropertyMock
             ) as tk_mock:
-                tk_mock.return_value = None # In facts, the value doesn't matter; it just needs not to be a string.
+                tk_mock.return_value = None  # In facts, the value doesn't matter; it just needs not to be a string.
                 self.assertTupleEqual(client.tokens, (access_token_2, refresh_token_2))
 
     def test_client_methods(self) -> None:

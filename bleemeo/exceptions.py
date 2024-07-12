@@ -33,6 +33,9 @@ class APIError(Exception):
     """
 
     def __init__(self, message: str, response: requests.Response) -> None:
+        if response.status_code:
+            message = f"{response.status_code}: {message}"
+
         super().__init__(message)
         self.response = response
 
