@@ -1,4 +1,4 @@
-# Bleemeo Python
+# Bleemeo Python [![Python 3.8 at least](https://img.shields.io/badge/python-3.8-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-380/) [![GitHub License](https://img.shields.io/github/license/bleemeo/bleemeo-python)](https://github.com/bleemeo/bleemeo-python/blob/main/LICENSE)
 
 Python library for interacting with the Bleemeo API
 
@@ -20,7 +20,8 @@ python -m pip install --upgrade bleemeo
 
 ## Documentation
 
-The Python library is documented using docstring in [the source code](https://github.com/bleemeo/bleemeo-python/bleemeo).
+The Python library is documented using docstring
+in [the source code](https://github.com/bleemeo/bleemeo-python/bleemeo).
 
 Some examples of library usage can be found in [examples](./examples).
 
