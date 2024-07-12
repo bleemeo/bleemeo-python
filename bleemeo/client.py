@@ -281,13 +281,13 @@ class Client:
         return response
 
     def get(
-        self, resource: Resource, id: str, fields: Sequence[str] | None = None
+        self, resource: Resource | str, id: str, fields: Sequence[str] | None = None
     ) -> Response:
         """
         get retrieves the resource with the given id with only the given fields, if any.
 
         Args:
-            resource (Resource): The kind of resource to retrieve.
+            resource (Resource | str): The kind of resource to retrieve.
             id (str): The id of the resource to retrieve.
             fields (Sequence[str] | None, optional): Specific fields to retrieve. Defaults to None (only the default ones).
 
@@ -299,14 +299,16 @@ class Client:
             ThrottleError: If too many requests are sent too close.
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
-        url = parse.urljoin(resource.value, id)
+        url = parse.urljoin(
+            resource.value if isinstance(resource, Resource) else resource, id
+        )
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do("GET", url, params=params)
 
     def get_page(
         self,
-        resource: Resource,
+        resource: Resource | str,
         *,
         page: int = 1,
         page_size: int = 25,
@@ -318,7 +320,7 @@ class Client:
         prefer using the `iterate()` method which is faster.
 
         Args:
-            resource (Resource): The kind of resource to retrieve.
+            resource (Resource | str): The kind of resource to retrieve.
             page (int): The number of the page to retrieve.
             page_size (int): The size of the page to retrieve.
             params (dict[str, Any]): The parameters the resources should match.
@@ -331,18 +333,20 @@ class Client:
             ThrottleError: If too many requests are sent too close.
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
-        url = resource.value
+        url = resource.value if isinstance(resource, Resource) else resource
         params = params.copy() if params else {}
         params.update({"page": page, "page_size": page_size})
 
         return self.do("GET", url, params=params)
 
-    def count(self, resource: Resource, params: dict[str, Any] | None = None) -> int:
+    def count(
+        self, resource: Resource | str, params: dict[str, Any] | None = None
+    ) -> int:
         """
         count returns the number of resources matching the given params.
 
         Args:
-            resource (Resource): The kind of resource to count.
+            resource (Resource | str): The kind of resource to count.
             params (dict[str, Any]): The parameters the resources should match.
 
         Returns:
@@ -358,13 +362,13 @@ class Client:
         return int(resp.json()["count"])
 
     def iterate(
-        self, resource: Resource, params: dict[str, Any] | None = None
+        self, resource: Resource | str, params: dict[str, Any] | None = None
     ) -> Iterator[dict[str, Any]]:
         """
         iterate yields the resources of the given kind matching the given params.
 
         Args:
-            resource (Resource): The kind of resource to iterate.
+            resource (Resource | str): The kind of resource to iterate.
             params (dict[str, Any]): The parameters the resources should match.
 
         Raises:
@@ -375,7 +379,9 @@ class Client:
         params = params.copy() if params else {}
         params.update({"page_size": 2500})
 
-        next_url: str | None = self._build_url(resource.value)
+        next_url: str | None = self._build_url(
+            resource.value if isinstance(resource, Resource) else resource
+        )
         while next_url is not None:
             resp = self.do("GET", next_url, params=params)
             data = resp.json()
@@ -385,14 +391,14 @@ class Client:
             params = None  # Avoid duplicating the params, which are already given back in the next URL.
 
     def create(
-        self, resource: Resource, data: Any, fields: Sequence[str] | None = None
+        self, resource: Resource | str, data: Any, fields: Sequence[str] | None = None
     ) -> Response:
         """
         create creates a new resource of the given kind with the given data.
         Fields expected to be returned can be specified as varargs.
 
         Args:
-            resource (Resource): The kind of resource to create.
+            resource (Resource | str): The kind of resource to create.
             data (Any): The body of the POST request.
             fields (Sequence[str] | None): Specific fields to retrieve. Defaults to None (only the default ones).
 
@@ -404,14 +410,14 @@ class Client:
             ThrottleError: If too many requests are sent too close.
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
-        url = resource.value
+        url = resource.value if isinstance(resource, Resource) else resource
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do("POST", url, data=data, params=params)
 
     def update(
         self,
-        resource: Resource,
+        resource: Resource | str,
         id: str,
         data: Any,
         fields: Sequence[str] | None = None,
@@ -422,7 +428,7 @@ class Client:
         Fields expected to be returned can be specified as varargs.
 
         Args:
-            resource (Resource): The kind of resource to update.
+            resource (Resource | str): The kind of resource to update.
             id (str): The ID of the resource to update.
             data (Any): The body of the PATCH request.
             fields (Sequence[str] | None): Specific fields to retrieve. Defaults to None (only the default ones).
@@ -435,17 +441,19 @@ class Client:
             ThrottleError: If too many requests are sent too close.
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
-        url = parse.urljoin(resource.value, id)
+        url = parse.urljoin(
+            resource.value if isinstance(resource, Resource) else resource, id
+        )
         params = {"fields": ",".join(fields)} if fields else None
 
         return self.do("PATCH", url, data=data, params=params)
 
-    def delete(self, resource: Resource, id: str) -> Response:
+    def delete(self, resource: Resource | str, id: str) -> Response:
         """
         delete deletes the resource of the given kind and id from the server.
 
         Args:
-            resource (Resource): The kind of resource to delete.
+            resource (Resource | str): The kind of resource to delete.
             id (str): The ID of the resource to delete.
 
         Returns:
@@ -456,6 +464,8 @@ class Client:
             ThrottleError: If too many requests are sent too close.
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
-        url = parse.urljoin(resource.value, id)
+        url = parse.urljoin(
+            resource.value if isinstance(resource, Resource) else resource, id
+        )
 
         return self.do("DELETE", url)
