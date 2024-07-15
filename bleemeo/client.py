@@ -180,9 +180,11 @@ class Client:
     def _do_request(
         self, request: Request, authenticated: bool, is_retry: bool = False
     ) -> Response:
-        request.headers = (
-            {} if request.json is None else {"Content-Type": "application/json"}
-        )
+        if request.headers is None:
+            request.headers = {}
+
+        if "Content-Type" not in request.headers and request.json:
+            request.headers["Content-Type"] = "application/json"
 
         if authenticated:
             request.headers.update(
