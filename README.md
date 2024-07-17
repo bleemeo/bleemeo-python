@@ -1,4 +1,4 @@
-# Bleemeo Python [![Python 3.8 at least](https://img.shields.io/badge/python-3.8-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-380/) [![GitHub License](https://img.shields.io/github/license/bleemeo/bleemeo-python)](https://github.com/bleemeo/bleemeo-python/blob/main/LICENSE)
+# Bleemeo Python [![Python 3.8 at least](https://img.shields.io/badge/python-%3E%3D3.8-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/release/python-380/) [![GitHub License](https://img.shields.io/github/license/bleemeo/bleemeo-python)](https://github.com/bleemeo/bleemeo-python/blob/main/LICENSE)
 
 Python library for interacting with the Bleemeo API
 
