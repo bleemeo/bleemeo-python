@@ -27,7 +27,14 @@ from .enums import (
     Status,
     TagType,
 )
-from .exceptions import APIError, AuthenticationError, ConfigurationError, ThrottleError
+from .exceptions import (
+    APIError,
+    AuthenticationError,
+    BadRequestError,
+    ConfigurationError,
+    ResourceNotFoundError,
+    ThrottleError,
+)
 from .resources import Resource
 
 __all__ = [
@@ -44,7 +51,9 @@ __all__ = [
     "TagType",
     "APIError",
     "AuthenticationError",
+    "BadRequestError",
     "ConfigurationError",
+    "ResourceNotFoundError",
     "ThrottleError",
     "Resource",
 ]
