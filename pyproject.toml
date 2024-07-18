@@ -2,7 +2,7 @@
 name = "bleemeo"
 version = "0.1.0"
 description = "A simple Python3 client for interacting with the Bleemeo API."
-authors = ["Thomas Delbende <thomas.delbende@bleemeo.com>"]
+authors = ["Bleemeo Packaging Team <packaging-team@bleemeo.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
