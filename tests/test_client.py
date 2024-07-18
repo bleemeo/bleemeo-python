@@ -24,13 +24,13 @@ from unittest.mock import PropertyMock
 import requests
 
 from bleemeo import (
-    APIError,
     Client,
     ConfigurationError,
     Resource,
     ThrottleError,
 )
 from bleemeo._authenticator import Authenticator
+from bleemeo.exceptions import BadRequestError, ResourceNotFoundError
 
 
 class _MockResponse:
@@ -51,14 +51,16 @@ class _ClientTestCase:
         client_method: str,
         client_params: dict[str, Any],
         response: _MockResponse,
-        expected_exception: type[Exception] | None = None,
+        expected_exception_cls: type[Exception] | None = None,
+        expected_exception_msg: str | None = None,
         expected_json: dict[str, Any] | None = None,
         expected_retval: Any | None = None,
     ) -> None:
         self.client_method = client_method
         self.client_params = client_params
         self.response = response
-        self.expected_exception = expected_exception
+        self.expected_exception_cls = expected_exception_cls
+        self.expected_exception_msg = expected_exception_msg
         self.expected_json = expected_json
         self.expected_retval = expected_retval
 
@@ -80,7 +82,12 @@ class _Executor:
 class ClientTest(unittest.TestCase):
     def test_configuration_validation(self) -> None:
         # Initializing a Client without credentials nor initial refresh token should raise an exception
-        self.assertRaises(ConfigurationError, Client)
+        with self.assertRaises(ConfigurationError) as cm:
+            Client()
+        self.assertEqual(
+            repr(cm.exception),
+            "ConfigurationError('Either a username or an initial OAuth refresh token must be provided.')",
+        )
 
     def test_authentication(self) -> None:
         username, password = "usr", "passwd"
@@ -177,7 +184,8 @@ class ClientTest(unittest.TestCase):
                 client_method="get",
                 client_params={"resource": Resource.ACCOUNT_CONFIG, "id": "bad"},
                 response=_MockResponse(404, b'{"detail":"Not Found"}'),
-                expected_exception=APIError,
+                expected_exception_cls=ResourceNotFoundError,
+                expected_exception_msg="ResourceNotFoundError('404: Resource https://api.bleemeo.com/v1/accountconfig/bad/ not found')",
             ),
             _ClientTestCase(
                 client_method="get_page",
@@ -191,9 +199,12 @@ class ClientTest(unittest.TestCase):
                 client_method="get_page",
                 client_params={"resource": Resource.AGENT_FACT},
                 response=_MockResponse(
-                    429, b'{"detail":"Too Many Requests"}', headers={"Retry-After": "0"}
+                    429,
+                    b'{"detail":"Too Many Requests"}',
+                    headers={"Retry-After": "10"},
                 ),
-                expected_exception=ThrottleError,
+                expected_exception_cls=ThrottleError,
+                expected_exception_msg="ThrottleError('429: Throttle error: request must be retried after 10s.')",
             ),
             _ClientTestCase(
                 client_method="count",
@@ -216,6 +227,18 @@ class ClientTest(unittest.TestCase):
                 },
                 response=_MockResponse(201, b'{"id":"1","name":"D"}'),
                 expected_json={"id": "1", "name": "D"},
+            ),
+            _ClientTestCase(
+                client_method="create",
+                client_params={
+                    "resource": Resource.WIDGET,
+                    "data": {"title": "W"},
+                },
+                response=_MockResponse(
+                    400, b'{"dashboard":["This field is required."]}'
+                ),
+                expected_exception_cls=BadRequestError,
+                expected_exception_msg="BadRequestError('400: Bad request:\\n- dashboard: This field is required.')",
             ),
             _ClientTestCase(
                 client_method="update",
@@ -245,19 +268,26 @@ class ClientTest(unittest.TestCase):
                         "_send",
                         return_value=tc.response,
                     ):
-                        client = Client(username="test")
+                        client = Client(
+                            username="test", throttle_max_auto_retry_delay=1
+                        )
                         method = getattr(client, tc.client_method)
                         executor = _Executor(method, tc.client_params)
 
-                        if tc.expected_exception is not None:
-                            self.assertRaises(tc.expected_exception, executor.execute)
+                        if tc.expected_exception_cls is not None:
+                            with self.assertRaises(tc.expected_exception_cls) as cm:
+                                executor.execute()
+                            if tc.expected_exception_msg:
+                                self.assertEqual(
+                                    repr(cm.exception), tc.expected_exception_msg
+                                )
                         else:
                             executor.execute()
 
                         if tc.expected_retval is not None:
-                            self.assertEqual(tc.expected_retval, executor.result)
+                            self.assertEqual(executor.result, tc.expected_retval)
                         elif tc.expected_json is not None:
-                            self.assertEqual(tc.expected_json, executor.result.json())  # type: ignore
+                            self.assertEqual(executor.result.json(), tc.expected_json)  # type: ignore
 
 
 if __name__ == "__main__":
