@@ -30,6 +30,7 @@ class AgentType:
     VSPHERE_CLUSTER = "vsphere_cluster"
     VSPHERE_HOST = "vsphere_host"
     VSPHERE_VM = "vsphere_vm"
+    APPLICATION_TYPE = "application"
 
 
 class DisconnectionReason:
