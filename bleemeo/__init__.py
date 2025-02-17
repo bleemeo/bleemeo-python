@@ -1,4 +1,4 @@
-# Copyright 2015-2024 Bleemeo
+# Copyright 2015-2025 Bleemeo
 #
 # bleemeo.com an infrastructure monitoring solution in the Cloud
 #
@@ -38,22 +38,22 @@ from .exceptions import (
 from .resources import Resource
 
 __all__ = [
-    "Client",
+    "APIError",
     "AgentType",
+    "AuthenticationError",
+    "BadRequestError",
+    "Client",
     "ConfigItemSource",
     "ConfigItemType",
+    "ConfigurationError",
     "DisconnectionReason",
     "GloutonDiagnostics",
     "Graph",
     "ReportIncluded",
     "ReportPeriod",
+    "Resource",
+    "ResourceNotFoundError",
     "Status",
     "TagType",
-    "APIError",
-    "AuthenticationError",
-    "BadRequestError",
-    "ConfigurationError",
-    "ResourceNotFoundError",
     "ThrottleError",
-    "Resource",
 ]
