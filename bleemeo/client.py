@@ -379,7 +379,7 @@ class Client:
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
         params = params.copy() if params else {}
-        params.update({"page_size": 2500})
+        params.setdefault("page_size", 2500)
 
         next_url: str | None = self._build_url(
             resource.value if isinstance(resource, Resource) else resource
