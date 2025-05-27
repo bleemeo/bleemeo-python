@@ -169,7 +169,7 @@ class Client:
         url = self.api_url
         for part in parts:
             url = parse.urljoin(url, part)
-        if not url.endswith("/"):
+        if not url.endswith("/") and "?" not in url:
             url = url + "/"
         return url
 
