@@ -166,12 +166,21 @@ class Client:
         self.session.close()
 
     def _build_url(self, *parts: str) -> str:
-        url = self.api_url
+        raw_url = self.api_url
         for part in parts:
-            url = parse.urljoin(url, part)
-        if not url.endswith("/") and "?" not in url:
-            url = url + "/"
-        return url
+            raw_url = parse.urljoin(raw_url, part)
+
+        url = parse.urlparse(raw_url)
+        url_with_slash = parse.ParseResult(
+            url.scheme,
+            url.netloc,
+            url.path if url.path.endswith("/") else url.path + "/",
+            url.params,
+            url.query,
+            url.fragment,
+        )
+
+        return url_with_slash.geturl()
 
     def _send(self, req: PreparedRequest, settings: Any) -> Response:
         """_send wraps `Session.send()` to make it easily mockable."""
