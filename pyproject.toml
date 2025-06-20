@@ -1,27 +1,23 @@
-[tool.poetry]
+[project]
 name = "bleemeo"
 version = "0.4.0"
 description = "A simple Python3 client for interacting with the Bleemeo API."
-authors = ["Bleemeo Packaging Team <packaging-team@bleemeo.com>"]
+authors = [{ name = "Bleemeo Packaging Team", email = "packaging-team@bleemeo.com" }]
+requires-python = ">=3.8"
 readme = "README.md"
 
-[tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.32.3"
+dependencies = [
+    "requests",
+]
 
+[dependency-groups]
+dev = [
+    "tox",
+    "mypy",
+    "types-requests",
+    "pytest>=8.2.2",
+]
 
-[tool.poetry.group.dev.dependencies]
-tox = "*"
-mypy = "*"
-types-requests = "*"
-pytest = "^8.2.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.ruff]
-target-version = "py38"
 
 [tool.ruff.lint]
 select = [
@@ -42,3 +38,9 @@ select = [
 ]
 # COM812: as recommended by ruff-format
 ignore = ["COM812", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "E501", "RUF012", "S311", "PERF203"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
