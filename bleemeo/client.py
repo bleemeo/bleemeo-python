@@ -166,12 +166,21 @@ class Client:
         self.session.close()
 
     def _build_url(self, *parts: str) -> str:
-        url = self.api_url
+        raw_url = self.api_url
         for part in parts:
-            url = parse.urljoin(url, part)
-        if not url.endswith("/"):
-            url = url + "/"
-        return url
+            raw_url = parse.urljoin(raw_url, part)
+
+        url = parse.urlparse(raw_url)
+        url_with_slash = parse.ParseResult(
+            url.scheme,
+            url.netloc,
+            url.path if url.path.endswith("/") else url.path + "/",
+            url.params,
+            url.query,
+            url.fragment,
+        )
+
+        return url_with_slash.geturl()
 
     def _send(self, req: PreparedRequest, settings: Any) -> Response:
         """_send wraps `Session.send()` to make it easily mockable."""
@@ -379,7 +388,7 @@ class Client:
             APIError: When receiving a non-successful status code not covered by the above exceptions.
         """
         params = params.copy() if params else {}
-        params.update({"page_size": 2500})
+        params.setdefault("page_size", 2500)
 
         next_url: str | None = self._build_url(
             resource.value if isinstance(resource, Resource) else resource
