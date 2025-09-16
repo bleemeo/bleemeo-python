@@ -208,8 +208,8 @@ class Client:
                     "Authorization": f"Bearer {self._authenticator.get_token(force_refetch=is_retry)}"
                 }
             )
-        else:
-            request.headers.update(self.custom_headers)
+        
+        request.headers.update(self.custom_headers)
 
         prep = self.session.prepare_request(request)
         # Merge environment settings into session
