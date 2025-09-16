@@ -118,7 +118,6 @@ class Client:
         self.oauth_initial_refresh_token = oauth_initial_refresh_token
         self.throttle_max_auto_retry_delay = throttle_max_auto_retry_delay
         self.use_external_authorization = use_external_authorization
-        self.custom_headers = custom_headers
         self.session = Session()
         self.session.headers = {
             "User-Agent": self.DEFAULT_USER_AGENT,
@@ -208,8 +207,6 @@ class Client:
                     "Authorization": f"Bearer {self._authenticator.get_token(force_refetch=is_retry)}"
                 }
             )
-        
-        request.headers.update(self.custom_headers)
 
         prep = self.session.prepare_request(request)
         # Merge environment settings into session
