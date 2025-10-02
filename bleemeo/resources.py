@@ -54,6 +54,7 @@ class Resource(Enum):
     PUBLIC_STATUS_PAGE = "v1/publicstatuspage/"
     RECORDING_RULE = "v1/recordingrule/"
     REPORT = "v1/report/"
+    REPORT_CONFIG = "v1/reportconfig/"
     SERVER_GROUP = "v1/servergroup/"
     SERVICE = "v1/service/"
     SESSION = "v1/session/"
