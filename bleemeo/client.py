@@ -59,6 +59,7 @@ class Client:
         oauth_client_secret: str | None = None,
         oauth_initial_refresh_token: str | None = None,
         custom_headers: dict[str, Any] | None = None,
+        use_external_authorization: bool = False,
         throttle_max_auto_retry_delay: int
         | None = DEFAULT_THROTTLE_MAX_AUTO_RETRY_DELAY,
         load_from_env: bool = False,
@@ -100,7 +101,11 @@ class Client:
                 "BLEEMEO_OAUTH_INITIAL_REFRESH_TOKEN"
             )
 
-        if not username and not oauth_initial_refresh_token:
+        if (
+            not use_external_authorization
+            and not username
+            and not oauth_initial_refresh_token
+        ):
             raise ConfigurationError(
                 "Either a username or an initial OAuth refresh token must be provided."
             )
@@ -112,6 +117,7 @@ class Client:
         self.oauth_client_secret = oauth_client_secret
         self.oauth_initial_refresh_token = oauth_initial_refresh_token
         self.throttle_max_auto_retry_delay = throttle_max_auto_retry_delay
+        self.use_external_authorization = use_external_authorization
         self.session = Session()
         self.session.headers = {
             "User-Agent": self.DEFAULT_USER_AGENT,
@@ -195,7 +201,7 @@ class Client:
         if "Content-Type" not in request.headers and request.json:
             request.headers["Content-Type"] = "application/json"
 
-        if authenticated:
+        if not self.use_external_authorization and authenticated:
             request.headers.update(
                 {
                     "Authorization": f"Bearer {self._authenticator.get_token(force_refetch=is_retry)}"
