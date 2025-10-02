@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "bleemeo"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "requests", version = "2.32.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },

@@ -1,6 +1,6 @@
 [project]
 name = "bleemeo"
-version = "0.6.0"
+version = "0.7.0"
 description = "A simple Python3 client for interacting with the Bleemeo API."
 authors = [{ name = "Bleemeo Packaging Team", email = "packaging-team@bleemeo.com" }]
 requires-python = ">=3.8"
